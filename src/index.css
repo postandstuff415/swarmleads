@@ -1,0 +1,26 @@
+@import "tailwindcss";
+
+@theme {
+  --color-brand-blue: #2563eb;
+  --color-brand-dark: #1f2937;
+}
+
+body {
+  font-family: 'Inter', system-ui, -apple-system, sans-serif;
+}
+
+.btn-primary {
+  @apply bg-brand-blue text-white font-bold py-4 px-8 rounded-xl transition-all hover:bg-blue-700 active:scale-95 text-xl shadow-lg;
+}
+
+.input-field {
+  @apply w-full p-4 border-2 border-gray-100 rounded-xl focus:border-brand-blue focus:outline-none text-lg transition-colors;
+}
+
+.label-text {
+  @apply block text-sm font-bold text-gray-500 uppercase tracking-wider mb-2;
+}
+
+.card {
+  @apply bg-white p-6 rounded-2xl border-2 border-gray-50 shadow-sm;
+}
