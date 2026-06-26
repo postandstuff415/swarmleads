@@ -1,17 +1,18 @@
 import React, { useState, useEffect } from 'react';
-import { 
-  Rocket, 
-  LayoutDashboard, 
-  Users, 
-  ChevronRight, 
-  Download, 
+import {
+  Rocket,
+  LayoutDashboard,
+  Users,
+  ChevronRight,
+  Download,
   AlertTriangle,
   CheckCircle2,
   Phone,
   Mail,
   Zap,
   Menu,
-  X
+  X,
+  MessageSquare,
 } from 'lucide-react';
 import { clsx } from 'clsx';
 import { twMerge } from 'tailwind-merge';
@@ -41,6 +42,7 @@ export default function App() {
   const [leadStats, setLeadStats] = useState({ total: 0, verified: 0, highIntent: 0 });
   const [scrapeStatus, setScrapeStatus] = useState('idle'); // idle | running | strategizing | complete | error
   const [error, setError] = useState('');
+  const [selectedLead, setSelectedLead] = useState(null); // for script modal
 
   // Poll for leads when scraping is running
   useEffect(() => {
@@ -350,6 +352,7 @@ export default function App() {
                       <th className="p-6 text-xs font-black text-gray-400 uppercase tracking-widest border-b border-gray-100">Phone Number</th>
                       <th className="p-6 text-xs font-black text-gray-400 uppercase tracking-widest border-b border-gray-100">Email Address</th>
                       <th className="p-6 text-xs font-black text-gray-400 uppercase tracking-widest border-b border-gray-100">AI Custom Angle</th>
+                      <th className="p-6 text-xs font-black text-gray-400 uppercase tracking-widest border-b border-gray-100 text-center">Script</th>
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-gray-100">
@@ -365,6 +368,15 @@ export default function App() {
                             {lead.angle}
                           </span>
                         </td>
+                        <td className="p-6 text-center">
+                          <button
+                            onClick={() => setSelectedLead(lead)}
+                            className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-gray-50 hover:bg-gray-100 text-gray-600 rounded-lg text-xs font-bold transition-colors"
+                          >
+                            <MessageSquare size={14} />
+                            {lead.outreach_script ? 'View Draft' : 'Generate'}
+                          </button>
+                        </td>
                       </tr>
                     ))}
                   </tbody>
@@ -375,6 +387,57 @@ export default function App() {
                 <Users className="w-16 h-16 text-gray-200 mx-auto mb-6" />
                 <h3 className="text-2xl font-black text-gray-400 mb-2">No leads yet</h3>
                 <p className="text-gray-400 font-medium">Start a project and deploy Worker Bees to populate your leads.</p>
+              </div>
+            )}
+
+            {/* Script Modal */}
+            {selectedLead && (
+              <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm" onClick={() => setSelectedLead(null)}>
+                <div className="bg-white rounded-3xl max-w-2xl w-full mx-6 max-h-[80vh] overflow-y-auto shadow-2xl" onClick={e => e.stopPropagation()}>
+                  <div className="flex items-center justify-between p-8 border-b border-gray-100">
+                    <div>
+                      <h3 className="text-xl font-black text-brand-dark">{selectedLead.business_name}</h3>
+                      <p className="text-sm text-gray-500 font-medium mt-1">Outreach Script Draft</p>
+                    </div>
+                    <button onClick={() => setSelectedLead(null)} className="p-2 hover:bg-gray-100 rounded-xl transition-colors">
+                      <X size={20} className="text-gray-400" />
+                    </button>
+                  </div>
+                  <div className="p-8">
+                    {selectedLead.outreach_script ? (
+                      <div className="bg-gray-50 rounded-2xl p-6 border border-gray-100">
+                        <div className="flex items-center gap-2 mb-4 text-gray-500 text-xs font-bold uppercase tracking-wider">
+                          <MessageSquare size={14} />
+                          SMS Preview
+                        </div>
+                        <p className="text-gray-800 leading-relaxed whitespace-pre-line font-medium">
+                          {selectedLead.outreach_script}
+                        </p>
+                      </div>
+                    ) : (
+                      <div className="text-center py-8">
+                        <MessageSquare className="w-12 h-12 text-gray-200 mx-auto mb-4" />
+                        <p className="text-gray-500 font-medium">No script generated yet.</p>
+                        <p className="text-gray-400 text-sm mt-1">Run the Writer Bee to generate a personalized outreach script.</p>
+                      </div>
+                    )}
+                    <div className="mt-6 flex items-center gap-3 text-xs text-gray-400">
+                      <Phone size={14} />
+                      <span>Send via SMS • {selectedLead.phone}</span>
+                    </div>
+                  </div>
+                  <div className="p-6 bg-gray-50 rounded-b-3xl border-t border-gray-100 flex justify-end gap-3">
+                    <button onClick={() => setSelectedLead(null)} className="px-6 py-3 border-2 border-gray-200 rounded-xl font-bold text-gray-600 hover:bg-white transition-colors text-sm">
+                      Close
+                    </button>
+                    {selectedLead.outreach_script && (
+                      <button className="px-6 py-3 bg-brand-blue text-white rounded-xl font-bold hover:bg-blue-700 transition-colors text-sm flex items-center gap-2">
+                        <MessageSquare size={16} />
+                        Copy Script
+                      </button>
+                    )}
+                  </div>
+                </div>
               </div>
             )}
           </div>
