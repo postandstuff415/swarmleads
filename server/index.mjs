@@ -9,6 +9,7 @@ import cors from 'cors';
 import { scrapeLeads, getStoredLeads } from './scraper-bee.mjs';
 import { runStrategist, getLeadStats } from './strategist-bee.mjs';
 import { runWriter } from './writer-bee.mjs';
+import { simulateBounceBack, getBounceBackLogs } from './bounceback-bee.mjs';
 
 const app = express();
 const PORT = 4000;
@@ -109,6 +110,26 @@ app.get('/api/stats', (req, res) => {
   try {
     const stats = getLeadStats();
     res.json(stats);
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// BounceBack SMS endpoints
+app.post('/api/bounceback/simulate', (req, res) => {
+  try {
+    const { incomingNumber, industry, region, businessName } = req.body;
+    const result = simulateBounceBack({ incomingNumber, industry, region, businessName });
+    res.json({ success: true, log: result });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+app.get('/api/bounceback/logs', (req, res) => {
+  try {
+    const logs = getBounceBackLogs();
+    res.json({ logs, count: logs.length });
   } catch (err) {
     res.status(500).json({ error: err.message });
   }

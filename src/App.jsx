@@ -37,6 +37,7 @@ export default function App() {
   const [leadTarget, setLeadTarget] = useState(100);
   const [isLaunched, setIsLaunched] = useState(false);
   const [bounceBackEnabled, setBounceBackEnabled] = useState(false);
+  const [bouncebackLogs, setBouncebackLogs] = useState([]);
   const [progress, setProgress] = useState({ scraper: 0, strategist: 0, writer: 0 });
   const [leads, setLeads] = useState([]);
   const [leadStats, setLeadStats] = useState({ total: 0, verified: 0, highIntent: 0 });
@@ -96,6 +97,50 @@ export default function App() {
         .catch(() => {});
     }
   }, [activeTab]);
+
+  const handleActivateBounceback = async () => {
+    setBounceBackEnabled(true);
+    try {
+      const res = await fetch('/api/bounceback/logs');
+      const data = await res.json();
+      if (data.logs) setBouncebackLogs(data.logs);
+    } catch (err) {
+      console.error('Failed to fetch bounceback logs:', err);
+    }
+  };
+
+  // Fetch bounceback logs periodically when enabled
+  useEffect(() => {
+    if (!bounceBackEnabled) return;
+    const interval = setInterval(async () => {
+      try {
+        const res = await fetch('/api/bounceback/logs');
+        const data = await res.json();
+        if (data.logs) setBouncebackLogs(data.logs);
+      } catch (err) {}
+    }, 5000);
+    return () => clearInterval(interval);
+  }, [bounceBackEnabled]);
+
+  const handleTestBounceback = async () => {
+    try {
+      const res = await fetch('/api/bounceback/simulate', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          industry: industry || 'Roofing',
+          region: region || 'your area',
+          businessName: 'Your Business',
+        }),
+      });
+      const data = await res.json();
+      if (data.log) {
+        setBouncebackLogs(prev => [data.log, ...prev]);
+      }
+    } catch (err) {
+      console.error('Bounceback test failed:', err);
+    }
+  };
 
   const handleLaunch = async () => {
     setIsLaunched(true);
@@ -328,8 +373,8 @@ export default function App() {
                     <span className="text-brand-blue font-bold"> Lock in the job instantly.</span>
                   </p>
                   <div className="flex items-center gap-6">
-                    <button 
-                      onClick={() => setBounceBackEnabled(true)}
+                    <button
+                      onClick={handleActivateBounceback}
                       className="bg-brand-blue text-white font-black py-4 px-8 rounded-2xl text-xl shadow-xl shadow-blue-100 hover:scale-105 active:scale-95 transition-all flex items-center gap-3"
                     >
                       Add Missed-Call Protection
@@ -437,6 +482,66 @@ export default function App() {
                       </button>
                     )}
                   </div>
+                </div>
+              </div>
+            )}
+
+            {/* BounceBack Activity Section */}
+            {bounceBackEnabled && (
+              <div className="mt-12 animate-in fade-in duration-500">
+                <div className="flex items-center justify-between mb-8">
+                  <div>
+                    <h3 className="text-2xl font-black text-brand-dark flex items-center gap-3">
+                      <Phone className="text-green-500" size={24} />
+                      BounceBack Activity
+                    </h3>
+                    <p className="text-gray-500 font-medium mt-1">Automated missed-call text-back logs</p>
+                  </div>
+                  <button
+                    onClick={handleTestBounceback}
+                    className="flex items-center gap-2 px-5 py-2.5 bg-green-50 text-green-700 rounded-xl font-bold hover:bg-green-100 transition-colors text-sm"
+                  >
+                    <Phone size={16} />
+                    Test My Protection
+                  </button>
+                </div>
+                <div className="bg-white rounded-3xl border border-gray-100 shadow-sm overflow-hidden">
+                  {bouncebackLogs.length > 0 ? (
+                    <div className="divide-y divide-gray-100">
+                      {bouncebackLogs.map((log) => (
+                        <div key={log.id} className="p-6 hover:bg-gray-50/30 transition-colors">
+                          <div className="flex items-start gap-4">
+                            <div className="w-10 h-10 rounded-xl bg-green-50 flex items-center justify-center shrink-0">
+                              <Phone size={18} className="text-green-600" />
+                            </div>
+                            <div className="flex-1 min-w-0">
+                              <div className="flex items-center gap-3 mb-2">
+                                <span className="font-bold text-gray-800">Missed call from {log.incoming_number}</span>
+                                <span className="text-xs text-gray-400">{log.created_at}</span>
+                              </div>
+                              <div className="bg-gray-50 rounded-xl p-4 border border-gray-100">
+                                <div className="flex items-center gap-2 mb-2 text-xs font-bold text-gray-400 uppercase tracking-wider">
+                                  <MessageSquare size={12} />
+                                  Auto-reply sent
+                                </div>
+                                <p className="text-gray-700 font-medium whitespace-pre-line">{log.outgoing_text}</p>
+                              </div>
+                              <div className="mt-2 flex items-center gap-2">
+                                <span className="text-xs bg-green-50 text-green-600 px-2 py-0.5 rounded-full font-bold">Delivered</span>
+                                <span className="text-xs text-gray-400">via SwarmLeads SMS Worker</span>
+                              </div>
+                            </div>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  ) : (
+                    <div className="p-12 text-center">
+                      <Phone className="w-12 h-12 text-gray-200 mx-auto mb-4" />
+                      <h4 className="text-lg font-black text-gray-400 mb-2">No missed calls yet</h4>
+                      <p className="text-gray-400 font-medium">Click "Test My Protection" to see BounceBack in action.</p>
+                    </div>
+                  )}
                 </div>
               </div>
             )}
