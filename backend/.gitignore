@@ -1,0 +1,8 @@
+node_modules/
+dist/
+.env
+*.log
+
+# Local Prisma engine binaries (this machine only — `prisma generate` normally
+# downloads these itself; kept out of git).
+prisma-engines/

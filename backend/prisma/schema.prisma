@@ -1,0 +1,154 @@
+// SwarmLeads backend — Prisma schema
+// Postgres replaces the prototype SQLite/team-db layer.
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+enum LeadStatus {
+  NEW         @map("new")
+  VERIFIED    @map("verified")
+  HIGH_INTENT @map("high_intent")
+}
+
+enum ScrapeJobStatus {
+  QUEUED    @map("queued")
+  RUNNING   @map("running")
+  SUCCEEDED @map("succeeded")
+  FAILED    @map("failed")
+}
+
+enum ScrapeStage {
+  SCRAPER    @map("scraper")
+  STRATEGIST @map("strategist")
+  WRITER     @map("writer")
+  DONE       @map("done")
+}
+
+enum OutreachStatus {
+  QUEUED @map("queued")
+  PUSHED @map("pushed")
+  FAILED @map("failed")
+}
+
+// Account owner. Populated by Phase 2 auth; created now so leads/jobs can be
+// attributed to a user and so the shared-login groundwork has a home.
+model User {
+  id        String   @id @default(uuid())
+  email     String   @unique
+  createdAt DateTime @default(now()) @map("created_at")
+
+  // $29.99/mo SwarmLeads subscription (separate Stripe product from BounceBack).
+  stripeCustomerId   String?   @unique @map("stripe_customer_id")
+  subscriptionStatus String    @default("inactive") @map("subscription_status")
+  subscriptionSince  DateTime? @map("subscription_since")
+
+  leads      Lead[]
+  scrapeJobs ScrapeJob[]
+
+  @@map("users")
+}
+
+model Lead {
+  id             String     @id @default(uuid())
+  businessName   String     @map("business_name")
+  contactPerson  String?    @map("contact_person")
+  phone          String?
+  email          String?
+  industry       String
+  region         String
+  angle          String?
+  source         String?
+  status         LeadStatus @default(NEW)
+  outreachScript String?    @map("outreach_script")
+  // Outscraper signals (null for simulated leads) — used by the Strategist for
+  // verification/high-intent and for lead scoring.
+  website        String?
+  rating         Float?
+  reviews        Int?
+  createdAt      DateTime   @default(now()) @map("created_at")
+
+  scrapeJobId String? @map("scrape_job_id")
+  scrapeJob   ScrapeJob? @relation(fields: [scrapeJobId], references: [id], onDelete: SetNull)
+
+  userId String? @map("user_id")
+  user   User?   @relation(fields: [userId], references: [id], onDelete: SetNull)
+
+  outreach       OutreachQueue[]
+  bouncebackLink BouncebackLink[]
+
+  @@index([status])
+  @@index([createdAt])
+  @@index([scrapeJobId])
+  @@map("leads")
+}
+
+// One scrape run. Replaces the client-faked progress bars with a real, pollable
+// job record; also carries Outscraper usage/cost for margin tracking.
+model ScrapeJob {
+  id             String          @id @default(uuid())
+  industry       String
+  region         String
+  target         Int
+  status         ScrapeJobStatus @default(QUEUED)
+  stage          ScrapeStage     @default(SCRAPER)
+  leadsFound     Int             @default(0) @map("leads_found")
+  error          String?
+  outscraperUnits Int?           @map("outscraper_units")
+  outscraperCost  Decimal?       @map("outscraper_cost") @db.Decimal(10, 4)
+  createdAt      DateTime        @default(now()) @map("created_at")
+  updatedAt      DateTime        @updatedAt @map("updated_at")
+  completedAt    DateTime?       @map("completed_at")
+
+  userId String? @map("user_id")
+  user   User?   @relation(fields: [userId], references: [id], onDelete: SetNull)
+
+  leads Lead[]
+
+  @@index([status])
+  @@index([createdAt])
+  @@map("scrape_jobs")
+}
+
+// Leads selected for Push-to-SMS. Table created now; dispatch wiring is Phase 3.
+model OutreachQueue {
+  id        String         @id @default(uuid())
+  leadId    String         @map("lead_id")
+  lead      Lead           @relation(fields: [leadId], references: [id], onDelete: Cascade)
+  status    OutreachStatus @default(QUEUED)
+  createdAt DateTime       @default(now()) @map("created_at")
+
+  @@index([status])
+  @@map("outreach_queue")
+}
+
+// Records a lead pushed into a BounceBack account's outreach flow.
+model BouncebackLink {
+  id                    String   @id @default(uuid())
+  leadId                String   @map("lead_id")
+  lead                  Lead     @relation(fields: [leadId], references: [id], onDelete: Cascade)
+  bouncebackAccountEmail String? @map("bounceback_account_email")
+  status                String   @default("linked")
+  createdAt             DateTime @default(now()) @map("created_at")
+
+  @@index([leadId])
+  @@map("bounceback_links")
+}
+
+model BouncebackLog {
+  id             String   @id @default(uuid())
+  incomingNumber String?  @map("incoming_number")
+  outgoingText   String?  @map("outgoing_text")
+  industry       String?
+  region         String?
+  status         String   @default("sent")
+  createdAt      DateTime @default(now()) @map("created_at")
+
+  @@index([createdAt])
+  @@map("bounceback_logs")
+}
