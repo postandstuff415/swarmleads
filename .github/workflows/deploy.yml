@@ -1,0 +1,75 @@
+name: CI/CD
+
+# Build-checks every push & PR. Auto-deploys to the shared EC2 only when main
+# builds green — same server and pattern as BounceBack.
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+jobs:
+  # ---------------------------------------------------------------------------
+  # 1. Build verification — fail fast before anything touches the server.
+  #    Builds BOTH the API and the SPA (the deploy builds them again on the box).
+  # ---------------------------------------------------------------------------
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+
+      - name: Backend — install & build
+        working-directory: backend
+        # Dummy DATABASE_URL: `prisma generate` + `tsc` only need it present, not real.
+        env:
+          DATABASE_URL: "postgresql://user:pass@localhost:5432/db?schema=public"
+        run: |
+          npm ci
+          npm run build   # prisma generate && tsc
+
+      - name: Frontend — install & build
+        working-directory: frontend
+        # No lockfile in frontend, so `npm install` (not `npm ci`).
+        run: |
+          npm install
+          npm run build   # vite build -> frontend/dist
+
+  # ---------------------------------------------------------------------------
+  # 2. Deploy — only on push to main, only after build passes.
+  # ---------------------------------------------------------------------------
+  deploy:
+    needs: build
+    if: github.ref == 'refs/heads/main' && github.event_name == 'push'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Deploy over SSH
+        uses: appleboy/ssh-action@v1.0.3
+        with:
+          host: ${{ secrets.EC2_HOST }}
+          username: ${{ secrets.EC2_USER }}
+          key: ${{ secrets.EC2_SSH_KEY }}
+          script: |
+            set -e
+            cd /var/www/swarmleads
+            git pull origin main
+
+            # --- API ---
+            cd backend
+            npm ci
+            npx prisma generate
+            npx prisma migrate deploy      # applies committed migrations (safe, no data loss)
+            npm run build                  # -> backend/dist
+
+            # --- SPA ---
+            cd ../frontend
+            npm install
+            npm run build                  # -> frontend/dist (served by the API process)
+
+            # --- reload (zero-downtime); first-ever deploy starts the process ---
+            cd ..
+            pm2 reload swarmleads-api --update-env || pm2 start ecosystem.config.cjs
+            pm2 save

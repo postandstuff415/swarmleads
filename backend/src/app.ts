@@ -1,5 +1,9 @@
 import express from 'express';
 import cors from 'cors';
+import fs from 'node:fs';
+import path from 'node:path';
+import { fileURLToPath } from 'node:url';
+import { env } from './config/env.js';
 import { healthRouter } from './modules/health/health.routes.js';
 import { authRouter } from './modules/auth/auth.routes.js';
 import { leadsRouter } from './modules/leads/leads.routes.js';
@@ -36,6 +40,25 @@ export function createApp() {
   app.use('/api', outreachRouter); // requireAuth applied per-route
   app.use('/api', usageRouter); // requireAuth applied per-route
   app.use('/api/bounceback', requireAuth, bouncebackRouter);
+
+  // --- Serve the built frontend (single-server production deploy) ---
+  // The Vite SPA is built to frontend/dist; in production the API process also
+  // serves those static assets, so one origin handles everything and nginx just
+  // reverse-proxies the domain to this port. Skipped in dev/test (no build dir),
+  // where Vite serves the SPA and proxies /api here.
+  const frontendDir =
+    env.FRONTEND_DIST_PATH ??
+    path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../../frontend/dist');
+
+  if (fs.existsSync(path.join(frontendDir, 'index.html'))) {
+    app.use(express.static(frontendDir));
+    // SPA fallback: any non-/api GET that didn't match a static file returns the
+    // app shell so client-side routes (e.g. /auth/callback) work on refresh.
+    app.use((req, res, next) => {
+      if (req.method !== 'GET' || req.path.startsWith('/api')) return next();
+      res.sendFile(path.join(frontendDir, 'index.html'));
+    });
+  }
 
   app.use(notFound);
   app.use(errorHandler);

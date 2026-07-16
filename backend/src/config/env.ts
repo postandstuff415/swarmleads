@@ -5,6 +5,9 @@ const envSchema = z.object({
   DATABASE_URL: z.string().min(1, 'DATABASE_URL is required'),
   PORT: z.coerce.number().int().positive().default(4000),
   NODE_ENV: z.enum(['development', 'production', 'test']).default('development'),
+  // Absolute path to the built frontend (frontend/dist). When set (production),
+  // the API also serves the SPA. Left unset in dev, where Vite serves it.
+  FRONTEND_DIST_PATH: z.string().optional(),
 
   // Outscraper (live lead source). When unset, the scraper falls back to the
   // built-in simulation source.
