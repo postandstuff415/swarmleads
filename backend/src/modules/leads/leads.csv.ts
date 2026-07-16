@@ -20,7 +20,16 @@ const COLUMNS: Array<{ header: string; key: keyof LeadDTO }> = [
 /** Escape a value for CSV (RFC 4180): quote if it contains comma/quote/newline. */
 function csvCell(value: unknown): string {
   if (value === null || value === undefined) return '';
-  const s = String(value);
+  let s = String(value);
+
+  // Neutralize spreadsheet formula injection: Excel/Sheets execute a cell that
+  // begins with = + - @ (or a control char) as a formula. Business names come
+  // from Outscraper and are attacker-influenceable (e.g. a Google listing named
+  // `=HYPERLINK("http://evil","click")`), so prefix a single quote to force the
+  // cell to be treated as text. Safe here — numeric columns are non-negative and
+  // a `+`-prefixed phone rendering as text is the desired behavior.
+  if (/^[=+\-@\t\r]/.test(s)) s = `'${s}`;
+
   return /[",\n\r]/.test(s) ? `"${s.replace(/"/g, '""')}"` : s;
 }
 

@@ -29,10 +29,13 @@ export interface MonthlyUsage {
   resetsAt: string;
 }
 
-/** Start of the current calendar month (UTC). */
-function periodStart(now = new Date()): Date {
+/** Start of the current calendar month (UTC). The allowance period boundary. */
+export function currentPeriodStart(now = new Date()): Date {
   return new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), 1));
 }
+
+/** @deprecated use currentPeriodStart — kept as the internal alias. */
+const periodStart = currentPeriodStart;
 
 /** Start of the next calendar month (UTC) — when the allowance resets. */
 function periodEnd(now = new Date()): Date {
