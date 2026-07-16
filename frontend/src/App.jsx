@@ -436,12 +436,21 @@ export default function App() {
             <p className="text-xs font-bold text-blue-600 uppercase tracking-widest mb-1">Your Account</p>
             <p className="text-sm font-black text-brand-dark truncate" title={currentUser?.email}>{currentUser?.email}</p>
             {subscription.status === 'active' || subscription.status === 'trialing' ? (
-              <p className="text-lg font-black text-brand-blue mt-1">$29.99<span className="text-xs font-normal text-blue-400">/mo · {subscription.status}</span></p>
+              <p className="text-lg font-black text-brand-blue mt-1">
+                ${subscription.checkoutPrice?.amount ?? '29.99'}
+                <span className="text-xs font-normal text-blue-400">/mo · {subscription.status}</span>
+              </p>
             ) : (
               <button onClick={handleSubscribe} disabled={subscribing}
                 className="mt-2 w-full bg-brand-blue text-white text-sm font-black py-2 rounded-lg hover:scale-[1.02] transition-all disabled:opacity-50">
-                {subscribing ? 'Starting…' : 'Subscribe · $29.99/mo'}
+                {subscribing ? 'Starting…' : `Subscribe · $${subscription.checkoutPrice?.amount ?? '29.99'}/mo`}
               </button>
+            )}
+            {subscription.checkoutPrice?.tier === 'addon'
+              && subscription.status !== 'active' && subscription.status !== 'trialing' && (
+              <p className="mt-2 text-xs font-bold text-gray-400">
+                Add-on price — bundled with your BounceBack plan.
+              </p>
             )}
             <button onClick={handleLogout} className="mt-3 text-xs font-bold text-gray-400 hover:text-gray-600 transition-colors">
               Sign out
@@ -469,7 +478,7 @@ export default function App() {
           <div className="max-w-3xl mx-auto animate-in fade-in slide-in-from-bottom-4 duration-500">
             <div className="mb-12">
               <h2 className="text-5xl font-black text-brand-dark mb-4">Start Project</h2>
-              <p className="text-xl text-gray-500 font-medium">Full unlimited access for just <span className="text-brand-blue font-black">$29.99/month.</span></p>
+              <p className="text-xl text-gray-500 font-medium">Full unlimited access for just <span className="text-brand-blue font-black">${subscription.checkoutPrice?.amount ?? '29.99'}/month.</span></p>
             </div>
 
             <div className="space-y-8 bg-white p-12 rounded-[2rem] shadow-xl shadow-gray-100 border border-gray-50">

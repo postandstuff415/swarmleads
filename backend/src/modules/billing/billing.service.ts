@@ -125,10 +125,37 @@ export async function startCheckout(user: SessionUser): Promise<CheckoutResult> 
 /** Current subscription status for a user, reconciled against Stripe. */
 export async function getSubscriptionStatus(
   user: SessionUser,
-): Promise<{ status: string; since: Date | null; hasAccess: boolean }> {
+): Promise<{
+  status: string;
+  since: Date | null;
+  hasAccess: boolean;
+  // The price the user would ACTUALLY pay to subscribe now — $9.99 add-on if
+  // they already own BounceBack, else $29.99 standalone. The UI must render this
+  // rather than hardcoding $29.99, or the sidebar disagrees with checkout.
+  checkoutPrice: { tier: 'standalone' | 'addon'; amount: number } | null;
+}> {
   const status = await getEntitlement(user);
   const record = await prisma.user.findUnique({ where: { id: user.userId } });
-  return { status, since: record?.subscriptionSince ?? null, hasAccess: grantsAccess(status) };
+
+  let checkoutPrice: { tier: 'standalone' | 'addon'; amount: number } | null = null;
+  if (isStripeConfigured()) {
+    try {
+      const stripe = getStripe();
+      const { tier, priceId } = await resolvePriceFor(stripe, 'swarmleads', { email: user.email });
+      const price = await stripe.prices.retrieve(priceId);
+      checkoutPrice = { tier, amount: (price.unit_amount ?? 0) / 100 };
+    } catch (err) {
+      // Never block the dashboard on a pricing lookup.
+      console.error('SwarmLeads checkout price lookup failed:', (err as Error).message);
+    }
+  }
+
+  return {
+    status,
+    since: record?.subscriptionSince ?? null,
+    hasAccess: grantsAccess(status),
+    checkoutPrice,
+  };
 }
 
 /** Map a Stripe subscription status to our internal vocabulary. */
