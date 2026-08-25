@@ -4,10 +4,10 @@
   "version": "0.0.0",
   "type": "module",
   "scripts": {
-    "dev": "vite",
-    "build": "vite build",
+    "dev": "infisical run --projectId 98ac6ff9-be43-46a1-8fbf-131e217bccd3 --env dev --path /swarmleads -- vite",
+    "build": "infisical run --projectId 98ac6ff9-be43-46a1-8fbf-131e217bccd3 --env prod --path /swarmleads -- vite build",
     "lint": "oxlint",
-    "preview": "vite preview"
+    "preview": "infisical run --projectId 98ac6ff9-be43-46a1-8fbf-131e217bccd3 --env prod --path /swarmleads -- vite preview"
   },
   "dependencies": {
     "@tailwindcss/vite": "^4.3.1",
