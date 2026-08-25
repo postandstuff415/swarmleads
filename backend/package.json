@@ -5,9 +5,9 @@
   "type": "module",
   "main": "dist/server.js",
   "scripts": {
-    "dev": "tsx watch src/server.ts",
+    "dev": "infisical run --projectId 98ac6ff9-be43-46a1-8fbf-131e217bccd3 --env dev --path /swarmleads -- tsx watch src/server.ts",
     "build": "prisma generate && tsc",
-    "start": "node dist/server.js",
+    "start": "infisical run --projectId 98ac6ff9-be43-46a1-8fbf-131e217bccd3 --env prod --path /swarmleads -- node dist/server.js",
     "prisma:generate": "prisma generate",
     "prisma:migrate": "prisma migrate dev",
     "db:up": "docker compose up -d",
